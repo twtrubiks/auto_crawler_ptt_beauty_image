@@ -1,0 +1,5 @@
+requests==2.12.4
+beautifulsoup4==4.5.3
+schedule==0.4.2
+psycopg2==2.7.1
+SQLAlchemy==1.1.10
