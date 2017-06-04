@@ -28,14 +28,16 @@ def remove(value, deletechars):
     return value.rstrip()
 
 
-# 符合圖片格式的網址
-def is_image_format(link):
-    link = link.lower()
+def image_url(link):
+    # 符合圖片格式的網址
     image_seq = ['.jpg', '.png', '.gif', '.jpeg']
     for seq in image_seq:
         if link.endswith(seq):
-            return True
-    return False
+            return link
+    # 有些網址會沒有檔案格式， "https://imgur.com/xxx"
+    if 'imgur' in link:
+        return '{}.jpg'.format(link)
+    return ''
 
 
 def replace_to_https(url):
@@ -52,7 +54,8 @@ def store_pic(url):
 
     # 抓取圖片URL(img tag )
     for img in soup.find_all("a", rel='nofollow'):
-        if is_image_format(img['href']):
-            pic_url_list.append(replace_to_https(img['href']))
+        img_url = image_url(img['href'])
+        if img_url:
+            pic_url_list.append(replace_to_https(img_url))
 
     return pic_url_list
