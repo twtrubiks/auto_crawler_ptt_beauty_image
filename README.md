@@ -66,11 +66,11 @@ worker: python app.py
 
 ## 執行環境
 
-* Python 3.5.2
+* Python 3.9
 
 ## Reference
 
-* [sqlalchemy](http://docs.sqlalchemy.org/en/latest/intro.html)
+* [sqlalchemy](https://docs.sqlalchemy.org/en/14/orm/quickstart.html)
 * [schedule](https://github.com/dbader/schedule)
 
 ## Donation
