@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, Tuple, Optional, Iterator, Union
-import sqlalchemy  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.orm import Session # type: ignore
 import sys
 import concurrent.futures
 import requests
@@ -245,11 +246,12 @@ class ArticleInfo:
 
     @staticmethod
     def write_data_to_db(
-        articles: List[ArticleInfo], session: sqlalchemy.orm.Session
+        articles: List[ArticleInfo], session: Session
     ) -> None:
         for article in articles:
             for image in article:
-                is_exist = session.query(Images).filter(Images.Url == image).first()
+                statement = select(Images).filter_by(Url=image)
+                is_exist = session.execute(statement).fetchone()
                 if not is_exist:
                     data: Images = Images(Url=image)
                     session.add(data)
