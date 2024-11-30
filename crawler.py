@@ -112,6 +112,9 @@ class PttSpider:
                     f"{self.ptt_head}{article.url}", verify=False
                 )
                 res.raise_for_status()
+            except requests.exceptions.TooManyRedirects:
+                logging.warning(f"Too many redirects for article: {self.ptt_head}{article.url}, skipping...")
+                continue  # Skip the current iteration and move to the next article
             except requests.exceptions.HTTPError as exc:
                 logging.warning(
                     f"HTTP error {exc.response.status_code} - {exc.response.reason}"
