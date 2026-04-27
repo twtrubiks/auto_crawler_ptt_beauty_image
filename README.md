@@ -1,22 +1,20 @@
 # auto_crawler_ptt_beauty_image
 
-Auto Crawler Ptt Beauty Image Use Python Schedule
+Auto Crawler Ptt Beauty Image with Linux Crontab
 
 * [Youtube Demo](https://youtu.be/IBOhQFeFDPg)
 
-本專案是經由 [PTT_Beauty_Spider](https://github.com/twtrubiks/PTT_Beauty_Spider) 小修改 + [schedule](https://github.com/dbader/schedule) 完成的。
+本專案是經由 [PTT_Beauty_Spider](https://github.com/twtrubiks/PTT_Beauty_Spider) 小修改而成，排程改由 Linux 內建的 crontab 觸發執行
 
-[線上 Demo 網站](https://ptt-beauty-images.herokuapp.com/)
+~~[線上 Demo 網站](https://ptt-beauty-images.herokuapp.com/)~~
 
-我是使用 Django 並且佈署在 [heroku](https://dashboard.heroku.com/) 上，教學以及程式碼可參考   [Deploying_Django_To_Heroku_Tutorial](https://github.com/twtrubiks/Deploying_Django_To_Heroku_Tutorial)
+~~我是使用 Django 並且佈署在 [heroku](https://dashboard.heroku.com/) 上，教學以及程式碼可參考 [Deploying_Django_To_Heroku_Tutorial](https://github.com/twtrubiks/Deploying_Django_To_Heroku_Tutorial)~~
 
-P.S
-目前佈署在 [heroku](https://dashboard.heroku.com/) 上，因為免費版有24小時一定要休息6小時的規定，所以比較慢請多多包涵。
+> P.S. **Heroku 已於 2022 年 11 月 28 日停止免費方案**，原本的線上 Demo 網站與部署說明已不再適用，故以刪除線標示，僅作歷史紀錄保留。
 
 ## 特色
 
 * 每半小時自動爬取 [https://www.ptt.cc/bbs/beauty/index.html](https://www.ptt.cc/bbs/beauty/index.html) 兩頁大於 10 推的文章圖片 URL，並存到資料庫。
-* 透過 [Deploying_Django_To_Heroku_Tutorial](https://github.com/twtrubiks/Deploying_Django_To_Heroku_Tutorial) 將圖片呈現到網頁上 [Demo 網站](https://ptt-beauty-images.herokuapp.com/)。
 
 ## 安裝套件
 
@@ -28,15 +26,42 @@ P.S
 pip install -r requirements.txt
 ```
 
-## schedule
+## 排程 (crontab)
 
-由於要每半小時爬取網頁一次，所以我用了 [schedule](https://github.com/dbader/schedule) , 讓程式依照我們設定的 schedule 下去執行
+直接使用 Linux 內建的 `crontab` 來定時觸發 `python app.py`
+
+crontab 的詳細用法可參考 [twtrubiks/linux-note - crontab-tutorual](https://github.com/twtrubiks/linux-note/tree/master/crontab-tutorual)。
+
+簡要使用方式：
+
+```bash
+# 編輯目前使用者的 crontab
+crontab -e
+
+# 加入下面這行（每 30 分鐘執行一次）
+*/30 * * * * cd /path/to/auto_crawler_ptt_beauty_image && /usr/bin/python3 app.py >> /var/log/ptt_beauty.log 2>&1
+
+# 列出目前的 crontab 設定
+crontab -l
+```
+
+cron 欄位順序為「分 時 日 月 週 指令」，常用範例：
+
+| 表達式 | 意義 |
+|---|---|
+| `*/30 * * * *` | 每 30 分鐘執行一次 |
+| `0 * * * *` | 每小時整點執行一次 |
+| `0 8 * * *` | 每天早上 8 點執行 |
+| `0 8 * * 1` | 每週一早上 8 點執行 |
+
+注意事項：
+
+* `python3` / 專案路徑請填**絕對路徑**，cron 環境變數很乾淨，不會繼承使用者 shell 的 `PATH`。
+* 將 stdout / stderr 重導到 log 檔（`>> ... 2>&1`）方便事後排錯。
 
 ## database 字串設定
 
-因為要佈署在 [Heroku](https://dashboard.heroku.com/)  , 所以我使用 Heroku Postgres ，
-
-詳細教學可參考 [如何在 heroku 上使用 database](https://github.com/twtrubiks/Deploying-Flask-To-Heroku#%E5%A6%82%E4%BD%95%E5%9C%A8-heroku-%E4%B8%8A%E4%BD%BF%E7%94%A8-database)
+請在 [dbModel.py](https://github.com/twtrubiks/auto_crawler_ptt_beauty_image/blob/master/dbModel.py) 中設定資料庫連線字串，自架 PostgreSQL（含本機 / VPS / Docker）皆可使用。本專案附有 [docker-compose.yml](https://github.com/twtrubiks/auto_crawler_ptt_beauty_image/blob/master/docker-compose.yml)，可直接 `docker compose up -d` 起一個本機 Postgres。
 
 db 字串設定可在 [dbModel.py](https://github.com/twtrubiks/auto_crawler_ptt_beauty_image/blob/master/dbModel.py) 裡面設定
 
@@ -50,28 +75,13 @@ db 字串設定可在 [dbModel.py](https://github.com/twtrubiks/auto_crawler_ptt
  DB_connect = 'postgresql+psycopg2://postgres:PASSWORD@localhost/database_name'
 ```
 
-## Deploy
-
-佈署空間 - [Heroku](https://dashboard.heroku.com/)
-
-教學請參考 [Deploying-Flask-To-Heroku](https://github.com/twtrubiks/Deploying-Flask-To-Heroku)
-
-因為我們這次並沒有要建立一個網站
-
-所以我們要將 [Procfile](https://github.com/twtrubiks/auto_crawler_ptt_beauty_image/blob/master/Procfile) 修改為
-
-```python
-worker: python app.py
-```
-
 ## 執行環境
 
 * Python 3.13
 
 ## Reference
 
-* [sqlalchemy](https://docs.sqlalchemy.org/en/14/orm/quickstart.html)
-* [schedule](https://github.com/dbader/schedule)
+* [sqlalchemy](https://www.sqlalchemy.org/)
 
 ## Donation
 

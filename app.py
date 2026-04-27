@@ -1,5 +1,3 @@
-import schedule  # type: ignore
-import time  # type: ignore
 import datetime
 import sqlalchemy  # type: ignore
 from sqlalchemy import create_engine  # type: ignore
@@ -40,8 +38,3 @@ def main(crawler_pages: int = 2) -> None:
 
 if __name__ == "__main__":
     main()
-
-    # schedule.every(30).minutes.do(main)
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)

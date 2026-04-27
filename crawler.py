@@ -160,7 +160,8 @@ class PttSpider:
 
     def crawler_img_urls(self, is_content_parser=False) -> None:
         for data in self._articles:
-            print("crawler image urls......")
+            if not getattr(data, "res", None):
+                continue
             soup: BeautifulSoup = BeautifulSoup(data.res.text, "html.parser")  # type: ignore
             title: str = str(uuid.uuid4())
             if is_content_parser:
