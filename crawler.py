@@ -9,14 +9,41 @@ import os
 import logging
 import uuid
 from bs4 import BeautifulSoup  # type: ignore
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from dbModel import Images
 
 urllib3.disable_warnings()
 logging.basicConfig(level=logging.WARNING)
 
+REQUEST_TIMEOUT: int = 15
+USER_AGENT: str = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+
+def _build_session() -> requests.Session:
+    session = requests.session()
+    retry = Retry(
+        total=5,
+        connect=5,
+        read=3,
+        backoff_factor=1.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET", "HEAD", "POST"]),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    session.headers.update({"User-Agent": USER_AGENT})
+    return session
+
 
 class PttSpider:
-    rs: requests.Session = requests.session()
+    rs: requests.Session = _build_session()
     ptt_head: str = "https://www.ptt.cc"
     ptt_middle: str = "bbs"
     parser_page_count: int = 5
@@ -41,6 +68,8 @@ class PttSpider:
 
     def run(self) -> None:
         self._soup = self.check_board()
+        if self._soup is None:
+            return
         self._index_seqs = self.parser_index()
         self._articles = self.parser_per_article_url()
         self.analyze_articles()
@@ -62,13 +91,12 @@ class PttSpider:
             sys.exit()
 
     def check_board_over18(self) -> BeautifulSoup | None:
-        load: dict[str, str] = {
-            "from": f"/{self.ptt_middle}/{self._board}/index.html",
-            "yes": "yes",
-        }
+        self.rs.cookies.set("over18", "1", domain="www.ptt.cc")
         try:
-            res: requests.Response = self.rs.post(
-                f"{self.ptt_head}/ask/over18", verify=False, data=load
+            res: requests.Response = self.rs.get(
+                f"{self.ptt_head}/{self.ptt_middle}/{self._board}/index.html",
+                verify=False,
+                timeout=REQUEST_TIMEOUT,
             )
             res.raise_for_status()
         except requests.exceptions.HTTPError as exc:
@@ -76,6 +104,9 @@ class PttSpider:
                 f"HTTP error {exc.response.status_code} - {exc.response.reason}"
             )
             raise Exception("網頁有問題")
+        except requests.exceptions.ConnectionError as exc:
+            logging.error(f"Connection error on check_board_over18: {exc}")
+            return None
         return BeautifulSoup(res.text, "html.parser")
 
     def parser_index(self) -> Iterator[str]:
@@ -91,7 +122,9 @@ class PttSpider:
         articles: list["ArticleInfo"] = []
         for page in self._index_seqs:
             try:
-                res: requests.Response = self.rs.get(page, verify=False)
+                res: requests.Response = self.rs.get(
+                    page, verify=False, timeout=REQUEST_TIMEOUT
+                )
                 res.raise_for_status()
             except requests.exceptions.HTTPError as exc:
                 logging.warning(
@@ -108,7 +141,9 @@ class PttSpider:
             try:
                 logging.debug(f"{self.ptt_head}{article.url} ing......")
                 res: requests.Response = self.rs.get(
-                    f"{self.ptt_head}{article.url}", verify=False
+                    f"{self.ptt_head}{article.url}",
+                    verify=False,
+                    timeout=REQUEST_TIMEOUT,
                 )
                 res.raise_for_status()
             except requests.exceptions.TooManyRedirects:
@@ -275,7 +310,9 @@ class Download:
         path: str
         url, path = image_info
         try:
-            res_img: requests.Response = self.rs.get(url, stream=True, verify=False)
+            res_img: requests.Response = self.rs.get(
+                url, stream=True, verify=False, timeout=REQUEST_TIMEOUT
+            )
             logging.debug(f"download image {url} ......")
             res_img.raise_for_status()
         except requests.exceptions.HTTPError as exc:
