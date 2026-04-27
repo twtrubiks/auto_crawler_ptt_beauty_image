@@ -66,7 +66,7 @@ worker: python app.py
 
 ## 執行環境
 
-* Python 3.9
+* Python 3.13
 
 ## Reference
 

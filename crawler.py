@@ -1,7 +1,6 @@
-from __future__ import annotations
-from typing import List, Dict, Tuple, Optional, Iterator, Union
+from collections.abc import Iterator
+import sqlalchemy  # type: ignore
 from sqlalchemy import select
-from sqlalchemy.orm import Session # type: ignore
 import sys
 import concurrent.futures
 import requests
@@ -30,10 +29,10 @@ class PttSpider:
 
         self._soup: BeautifulSoup = None
         self._index_seqs: Iterator[str] = None  # type: ignore
-        self._articles: List[ArticleInfo] = []
+        self._articles: list["ArticleInfo"] = []
 
     @property
-    def info(self) -> List[ArticleInfo]:
+    def info(self) -> list["ArticleInfo"]:
         return self._articles
 
     @property
@@ -54,7 +53,7 @@ class PttSpider:
         self.analyze_articles()
         self.crawler_img_urls(True)
 
-    def check_board(self) -> Optional[BeautifulSoup]:
+    def check_board(self) -> BeautifulSoup | None:
         print("check board......")
         if self._board:
             return self.check_board_over18()
@@ -62,8 +61,8 @@ class PttSpider:
             print("請輸入看版名稱")
             sys.exit()
 
-    def check_board_over18(self) -> Optional[BeautifulSoup]:
-        load: Dict[str, str] = {
+    def check_board_over18(self) -> BeautifulSoup | None:
+        load: dict[str, str] = {
             "from": f"/{self.ptt_middle}/{self._board}/index.html",
             "yes": "yes",
         }
@@ -87,9 +86,9 @@ class PttSpider:
             for page in range(max_page - self.parser_page + 1, max_page + 1, 1)
         )
 
-    def parser_per_article_url(self) -> List[ArticleInfo]:
+    def parser_per_article_url(self) -> list["ArticleInfo"]:
         print("parser per article url......")
-        articles: List[ArticleInfo] = []
+        articles: list["ArticleInfo"] = []
         for page in self._index_seqs:
             try:
                 res: requests.Response = self.rs.get(page, verify=False)
@@ -143,7 +142,7 @@ class PttSpider:
                 data.img_urls += self.image_url(img["href"])
 
     @staticmethod
-    def image_url(link: str) -> List[str]:
+    def image_url(link: str) -> list[str]:
         # 不抓相簿 和 .gif
         if (
             ("imgur.com/a/" in link)
@@ -152,7 +151,7 @@ class PttSpider:
         ):
             return []
         # 符合圖片格式的網址
-        images_format: List[str] = [".jpg", ".png", ".jpeg"]
+        images_format: list[str] = [".jpg", ".png", ".jpeg"]
         for image in images_format:
             if link.endswith(image):
                 return [link]
@@ -162,10 +161,10 @@ class PttSpider:
         return []
 
     @staticmethod
-    def crawler_info(res: requests.Response, push_rate: int) -> List[ArticleInfo]:
+    def crawler_info(res: requests.Response, push_rate: int) -> list["ArticleInfo"]:
         logging.debug(f"crawler_info......{res.url}")
         soup: BeautifulSoup = BeautifulSoup(res.text, "html.parser")
-        articles: List[ArticleInfo] = []
+        articles: list["ArticleInfo"] = []
         for r_ent in soup.find_all(class_="r-ent"):
             try:
                 # 先得到每篇文章的 url
@@ -175,7 +174,7 @@ class PttSpider:
                 title: str = r_ent.find(class_="title").text.strip()
                 rate_text: str = r_ent.find(class_="nrec").text
                 author: str = r_ent.find(class_="author").text
-                rate: Union[int, str]
+                rate: int | str
 
                 if "公告" in title:
                     continue
@@ -214,17 +213,17 @@ class ArticleInfo:
         self.author: str = kwargs.get("author", None)
         self.url: str = kwargs.get("url", None)
         self.rate: int = kwargs.get("rate", None)
-        self.img_urls: List[str] = []
+        self.img_urls: list[str] = []
 
     @staticmethod
     def data_process(
-        info: List[ArticleInfo], crawler_time: str
-    ) -> List[Tuple[str, str]]:
-        result: List[Tuple[str, str]] = []
+        info: list["ArticleInfo"], crawler_time: str
+    ) -> list[tuple[str, str]]:
+        result: list[tuple[str, str]] = []
         for data in info:
             if not data.img_urls:
                 continue
-            name: str = ArticleInfo.remove_special_char(data.title, '\/:*?"<>|.')
+            name: str = ArticleInfo.remove_special_char(data.title, r'\/:*?"<>|.')
             dir_name: str = f"{name}_{data.rate}" if data.rate else ""
             relative_path: str = os.path.join(crawler_time, dir_name)
             path: str = os.path.abspath(relative_path)
@@ -249,7 +248,7 @@ class ArticleInfo:
 
     @staticmethod
     def write_data_to_db(
-        articles: List[ArticleInfo], session: Session
+        articles: list["ArticleInfo"], session: sqlalchemy.orm.Session
     ) -> None:
         for article in articles:
             for image in article:
@@ -264,14 +263,14 @@ class ArticleInfo:
 class Download:
     rs: requests.Session = requests.session()
 
-    def __init__(self, info: List[Tuple[str, str]]) -> None:
-        self.info: List[Tuple[str, str]] = info
+    def __init__(self, info: list[tuple[str, str]]) -> None:
+        self.info: list[tuple[str, str]] = info
 
     def run(self) -> None:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             executor.map(self.download, self.info)
 
-    def download(self, image_info: Tuple[str, str]) -> None:
+    def download(self, image_info: tuple[str, str]) -> None:
         url: str
         path: str
         url, path = image_info

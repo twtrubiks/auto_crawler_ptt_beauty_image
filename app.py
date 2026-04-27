@@ -1,17 +1,15 @@
-from __future__ import annotations
 import schedule  # type: ignore
 import time  # type: ignore
 import datetime
+import sqlalchemy  # type: ignore
 from sqlalchemy import create_engine  # type: ignore
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, Session  # type: ignore
+from sqlalchemy.orm import sessionmaker  # type: ignore
 from dbModel import DB_connect
 from crawler import PttSpider, ArticleInfo, Download
-from typing import Tuple
 
 
-def connect_db(db_string: str) -> Tuple[Engine, Session]:
-    engine: Engine = create_engine(db_string)
+def connect_db(db_string: str) -> sqlalchemy.orm.sessionmaker:
+    engine: sqlalchemy.Engine = create_engine(db_string)
     return sessionmaker(engine)
 
 
