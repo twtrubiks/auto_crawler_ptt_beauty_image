@@ -24,17 +24,5 @@ def main(crawler_pages: int = 2) -> None:
     with session() as session:
         ArticleInfo.write_data_to_db(spider.info, session)
 
-    # download images
-    # crawler_datetime = datetime.datetime.now()
-    # crawler_time = f"{spider.board}_PttImg_{crawler_datetime:%Y%m%d%H%M%S}"
-    # data = ArticleInfo.data_process(spider.info, crawler_time)
-    # download = Download(data)
-    # download.run()
-
-    # disconnect
-    # session.close()
-    # engine.dispose()
-
-
 if __name__ == "__main__":
     main()
