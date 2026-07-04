@@ -340,7 +340,7 @@ def fetch(
     type=click.Path(),
     default=".",
     show_default=True,
-    help="掃描圖片資料夾的根目錄（比對 *_PttImg_<時間戳>/）。",
+    help="掃描圖片資料夾的根目錄（比對 *_PttImg_* 與 ptt_images_* 資料夾）。",
 )
 @click.confirmation_option(prompt="確定要清理舊資料？")
 @click.pass_context
@@ -351,8 +351,9 @@ def clean(
     images_dir: str,
 ) -> None:
     """清掉超過 N 天的 DB 紀錄與下載資料夾。"""
-    cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
-    click.secho(f"清理 {cutoff:%Y-%m-%d %H:%M} 之前的資料", fg="cyan")
+    # CreateDate 是 timestamptz，cutoff 用 aware datetime 才不會被 DB 時區偏移
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+    click.secho(f"清理 {cutoff.astimezone():%Y-%m-%d %H:%M} 之前的資料", fg="cyan")
 
     if target in ("db", "all"):
         SessionLocal = _make_sessionmaker(ctx.obj["db_url"])
@@ -363,13 +364,18 @@ def clean(
             click.secho(f"  -> DB 刪除 {result.rowcount} 筆", fg="green")
 
     if target in ("images", "all"):
-        candidates = glob(os.path.join(images_dir, "*_PttImg_*"))
+        # fetch 輸出 *_PttImg_*，download 輸出 ptt_images_*
+        candidates = glob(os.path.join(images_dir, "*_PttImg_*")) + glob(
+            os.path.join(images_dir, "ptt_images_*")
+        )
         removed = 0
         for path in candidates:
             if not os.path.isdir(path):
                 continue
             try:
-                mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+                mtime = datetime.datetime.fromtimestamp(
+                    os.path.getmtime(path), tz=datetime.timezone.utc
+                )
                 if mtime < cutoff:
                     shutil.rmtree(path)
                     removed += 1
