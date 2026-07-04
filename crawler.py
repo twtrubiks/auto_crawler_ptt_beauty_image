@@ -253,11 +253,11 @@ class ArticleInfo:
             relative_path: str = os.path.join(crawler_time, dir_name)
             path: str = os.path.abspath(relative_path)
             try:
-                if not os.path.exists(path):
-                    os.makedirs(path)
-                    result += [(img_url, path) for img_url in data]
-            except Exception as e:
+                os.makedirs(path, exist_ok=True)
+            except OSError as e:
                 logging.warning(e)
+                continue
+            result += [(img_url, path) for img_url in data]
         return result
 
     @staticmethod

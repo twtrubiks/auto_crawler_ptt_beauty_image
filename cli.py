@@ -300,10 +300,7 @@ def fetch(
     data = ArticleInfo.data_process(spider.info, output)
 
     if not data:
-        click.secho(
-            "  -> 沒有產生新的下載項目（資料夾可能已存在，請換 --output）",
-            fg="yellow",
-        )
+        click.secho("  -> 沒有產生下載項目", fg="yellow")
         return
 
     click.secho(f"下載 {len(data)} 張圖片到 {output}", fg="cyan")
