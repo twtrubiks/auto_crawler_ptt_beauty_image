@@ -1,5 +1,11 @@
 # auto_crawler_ptt_beauty_image
 
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)](https://www.sqlalchemy.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue.svg)](https://www.postgresql.org/)
+[![Click](https://img.shields.io/badge/Click-8.4-orange.svg)](https://click.palletsprojects.com/)
+[![BeautifulSoup](https://img.shields.io/badge/BeautifulSoup-4.15-green.svg)](https://www.crummy.com/software/BeautifulSoup/)
+
 Auto Crawler Ptt Beauty Image with Linux Crontab
 
 * [Youtube Demo](https://youtu.be/IBOhQFeFDPg)
@@ -155,7 +161,22 @@ db 字串設定可在 [dbModel.py](https://github.com/twtrubiks/auto_crawler_ptt
 如果你也是使用 Postgres 格式如下
 
 ```python
- DB_connect = 'postgresql+psycopg2://postgres:PASSWORD@localhost/database_name'
+ DB_connect = 'postgresql+psycopg://postgres:PASSWORD@localhost/database_name'
+```
+
+## 建立資料表
+
+第一次使用前（DB 連線字串設定好、資料庫啟動後），先建立 `Images` 資料表：
+
+```bash
+python3 dbModel.py
+```
+
+## 測試
+
+```bash
+pip install pytest
+python3 -m pytest
 ```
 
 ## 執行環境
