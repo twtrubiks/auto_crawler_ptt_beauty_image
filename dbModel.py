@@ -14,7 +14,7 @@ class Images(Base):
     __tablename__ = "Images"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    Url: Mapped[str | None] = mapped_column(String)
+    Url: Mapped[str | None] = mapped_column(String, unique=True)
     CreateDate: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

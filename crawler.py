@@ -1,13 +1,13 @@
 from collections.abc import Iterator
 import sqlalchemy  # type: ignore
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 import sys
 import concurrent.futures
 import requests
 import urllib3
 import os
 import logging
-import uuid
 from bs4 import BeautifulSoup  # type: ignore
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -22,6 +22,10 @@ USER_AGENT: str = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
+
+
+class CrawlerError(Exception):
+    """爬蟲執行期間可預期的錯誤，訊息可直接顯示給使用者。"""
 
 
 def _build_session() -> requests.Session:
@@ -68,21 +72,12 @@ class PttSpider:
 
     def run(self) -> None:
         self._soup = self.check_board()
-        if self._soup is None:
-            return
         self._index_seqs = self.parser_index()
         self._articles = self.parser_per_article_url()
         self.analyze_articles()
         self.crawler_img_urls()
 
-    def run_specific_article(self, article) -> None:
-        self._board = article.url.split("/")[-2]
-        self.check_board_over18()
-        self._articles = [article]
-        self.analyze_articles()
-        self.crawler_img_urls(True)
-
-    def check_board(self) -> BeautifulSoup | None:
+    def check_board(self) -> BeautifulSoup:
         print("check board......")
         if self._board:
             return self.check_board_over18()
@@ -90,7 +85,7 @@ class PttSpider:
             print("請輸入看版名稱")
             sys.exit()
 
-    def check_board_over18(self) -> BeautifulSoup | None:
+    def check_board_over18(self) -> BeautifulSoup:
         self.rs.cookies.set("over18", "1", domain="www.ptt.cc")
         try:
             res: requests.Response = self.rs.get(
@@ -103,10 +98,14 @@ class PttSpider:
             logging.warning(
                 f"HTTP error {exc.response.status_code} - {exc.response.reason}"
             )
-            raise Exception("網頁有問題")
+            raise CrawlerError(
+                f"無法開啟看板 {self._board}"
+                f"（HTTP {exc.response.status_code} {exc.response.reason}），"
+                "請確認看板名稱是否正確"
+            ) from exc
         except requests.exceptions.ConnectionError as exc:
             logging.error(f"Connection error on check_board_over18: {exc}")
-            return None
+            raise CrawlerError(f"連線 www.ptt.cc 失敗：{exc}") from exc
         return BeautifulSoup(res.text, "html.parser")
 
     def parser_index(self) -> Iterator[str]:
@@ -158,21 +157,11 @@ class PttSpider:
             else:
                 article.res = res  # type: ignore
 
-    def crawler_img_urls(self, is_content_parser=False) -> None:
+    def crawler_img_urls(self) -> None:
         for data in self._articles:
             if not getattr(data, "res", None):
                 continue
             soup: BeautifulSoup = BeautifulSoup(data.res.text, "html.parser")  # type: ignore
-            title: str = str(uuid.uuid4())
-            if is_content_parser:
-                # 避免有些文章會被使用者自行刪除標題列
-                try:
-                    title = soup.select(".article-meta-value")[2].text
-                except Exception as e:
-                    logging.debug("自行刪除標題列:", e)
-                finally:
-                    data.title = title
-
             # 抓取圖片URL(img tag )
             for img in soup.find_all("a", rel="nofollow"):
                 data.img_urls += self.image_url(img["href"])
@@ -286,13 +275,20 @@ class ArticleInfo:
     def write_data_to_db(
         articles: list["ArticleInfo"], session: sqlalchemy.orm.Session
     ) -> None:
-        for article in articles:
-            for image in article:
-                statement = select(Images).filter_by(Url=image)
-                is_exist = session.execute(statement).fetchone()
-                if not is_exist:
-                    data: Images = Images(Url=image)
-                    session.add(data)
+        urls: set[str] = {image for article in articles for image in article}
+        if not urls:
+            return
+        # 一次撈出已存在的 URL（取代逐筆 SELECT 的 N+1 查詢）
+        statement = select(Images.Url).where(Images.Url.in_(urls))
+        existing: set[str] = set(session.scalars(statement))
+        new_urls: set[str] = urls - existing
+        if new_urls:
+            # ON CONFLICT DO NOTHING：兩個排程重疊時靠 unique constraint 擋掉重複
+            session.execute(
+                pg_insert(Images)
+                .values([{"Url": url} for url in new_urls])
+                .on_conflict_do_nothing()
+            )
         session.commit()
 
 

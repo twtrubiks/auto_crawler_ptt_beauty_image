@@ -17,7 +17,7 @@ from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import sessionmaker
 
 import crawler as crawler_mod
-from crawler import ArticleInfo, Download, PttSpider, _build_session
+from crawler import ArticleInfo, CrawlerError, Download, PttSpider, _build_session
 from dbModel import DB_connect, Images
 
 Download.rs = _build_session()
@@ -103,7 +103,10 @@ def crawl(
         fg="cyan",
     )
     spider = PttSpider(board=board, parser_page=pages, push_rate=push_threshold)
-    spider.run()
+    try:
+        spider.run()
+    except CrawlerError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     article_count = len(spider.info)
     img_count = sum(len(a.img_urls) for a in spider.info)
@@ -268,7 +271,10 @@ def fetch(
         fg="cyan",
     )
     spider = PttSpider(board=board, parser_page=pages, push_rate=push_threshold)
-    spider.run()
+    try:
+        spider.run()
+    except CrawlerError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     article_count = len(spider.info)
     img_count = sum(len(a.img_urls) for a in spider.info)
