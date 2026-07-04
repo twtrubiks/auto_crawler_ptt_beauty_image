@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 import sys
 import concurrent.futures
 import requests
-import urllib3
 import os
 import logging
 from bs4 import BeautifulSoup  # type: ignore
@@ -13,7 +12,6 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dbModel import Images
 
-urllib3.disable_warnings()
 logging.basicConfig(level=logging.WARNING)
 
 REQUEST_TIMEOUT: int = 15
@@ -90,7 +88,6 @@ class PttSpider:
         try:
             res: requests.Response = self.rs.get(
                 f"{self.ptt_head}/{self.ptt_middle}/{self._board}/index.html",
-                verify=False,
                 timeout=REQUEST_TIMEOUT,
             )
             res.raise_for_status()
@@ -122,7 +119,7 @@ class PttSpider:
         for page in self._index_seqs:
             try:
                 res: requests.Response = self.rs.get(
-                    page, verify=False, timeout=REQUEST_TIMEOUT
+                    page, timeout=REQUEST_TIMEOUT
                 )
                 res.raise_for_status()
             except requests.exceptions.HTTPError as exc:
@@ -141,7 +138,6 @@ class PttSpider:
                 logging.debug(f"{self.ptt_head}{article.url} ing......")
                 res: requests.Response = self.rs.get(
                     f"{self.ptt_head}{article.url}",
-                    verify=False,
                     timeout=REQUEST_TIMEOUT,
                 )
                 res.raise_for_status()
@@ -308,7 +304,7 @@ class Download:
         url, path = image_info
         try:
             res_img: requests.Response = self.rs.get(
-                url, stream=True, verify=False, timeout=REQUEST_TIMEOUT
+                url, stream=True, timeout=REQUEST_TIMEOUT
             )
             logging.debug(f"download image {url} ......")
             res_img.raise_for_status()
