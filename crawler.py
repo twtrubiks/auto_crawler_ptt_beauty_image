@@ -188,14 +188,18 @@ class PttSpider:
         articles: list["ArticleInfo"] = []
         for r_ent in soup.find_all(class_="r-ent"):
             try:
-                # 先得到每篇文章的 url
-                url: str = r_ent.find("a")["href"]
+                # 先得到每篇文章的 url；已刪除的文章在列表上沒有連結
+                link = r_ent.find("a")
+                if link is None:
+                    logging.debug("本文已被刪除")
+                    continue
+                url: str = link["href"]
                 if not url:
                     continue
                 title: str = r_ent.find(class_="title").text.strip()
                 rate_text: str = r_ent.find(class_="nrec").text
                 author: str = r_ent.find(class_="author").text
-                rate: int | str
+                rate: int
 
                 if "公告" in title:
                     continue
@@ -203,21 +207,22 @@ class PttSpider:
                 if rate_text:
                     if rate_text.startswith("爆"):
                         rate = 100
+                    elif rate_text == "XX":
+                        rate = -10
                     elif rate_text.startswith("X"):
                         rate = -1 * int(rate_text[1])
                     else:
-                        rate = rate_text
+                        rate = int(rate_text)
                 else:
                     rate = 0
 
                 # 比對推文數
-                if int(rate) >= push_rate:
+                if rate >= push_rate:
                     articles.append(
                         ArticleInfo(title=title, author=author, url=url, rate=rate)
                     )
             except Exception as e:
-                logging.debug("本文已被刪除")
-                logging.debug(e)
+                logging.warning(f"解析文章列表失敗，已略過一篇：{e}")
         return articles
 
     @staticmethod
