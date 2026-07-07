@@ -1,6 +1,6 @@
 requests==2.34.2
 beautifulsoup4==4.15.0
-psycopg2-binary==2.9.12
+psycopg[binary]==3.3.4
 SQLAlchemy==2.0.51
 urllib3==2.7.0
 click==8.4.2

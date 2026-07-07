@@ -3,7 +3,7 @@ from sqlalchemy import String, DateTime, create_engine  # type: ignore
 from sqlalchemy.sql import func  # type: ignore
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column  # type: ignore
 
-DB_connect = "postgresql+psycopg2://myuser:password@localhost/postgres"
+DB_connect = "postgresql+psycopg://myuser:password@localhost/postgres"
 
 
 class Base(DeclarativeBase):
